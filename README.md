@@ -1,6 +1,6 @@
 # Better IRIS
 
-[IRIS](https://www.iris.go.kr/) (국가연구개발통합정보시스템) 사용성을 개선하는 Tampermonkey 유저스크립트입니다.
+[IRIS](https://www.iris.go.kr/) (범부처통합연구지원시스템) 사용성을 개선하는 Tampermonkey 유저스크립트입니다.
 
 ## 스크린샷
 
