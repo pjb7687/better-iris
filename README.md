@@ -35,8 +35,21 @@
 
 ## 설치 방법
 
-1. [Tampermonkey](https://www.tampermonkey.net/) 브라우저 확장 프로그램 설치
-2. 새 유저스크립트를 생성하고 `better-iris.js` 내용을 붙여넣기
+### 1. Tampermonkey 확장 프로그램 설치
+
+1. Chrome 웹 스토어에서 [Tampermonkey](https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo)를 검색합니다.
+2. **Chrome에 추가** 버튼을 클릭하여 설치합니다.
+3. 설치 후 브라우저 주소창에 `chrome://extensions/?id=dhdgffkkebhmkfjojejmpbldmpobfkfo`를 입력하여 Tampermonkey 설정 페이지로 이동합니다.
+4. **사용자 스크립트 허용**을 활성화합니다.
+
+### 2. Better IRIS 스크립트 추가
+
+1. 브라우저 우측 상단의 Tampermonkey 아이콘을 클릭합니다.
+2. **새 스크립트 만들기**를 선택합니다.
+3. 편집기에 기본으로 입력된 내용을 모두 삭제합니다.
+4. 이 저장소의 [`better-iris.js`](better-iris.js) 파일 내용을 전체 복사하여 붙여넣습니다.
+5. `Ctrl+S`를 눌러 저장합니다.
+6. [IRIS](https://www.iris.go.kr/)에 접속하면 스크립트가 자동으로 실행됩니다.
 
 ## 발행국가 수동 보정
 
