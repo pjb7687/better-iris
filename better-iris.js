@@ -313,9 +313,9 @@
   'use strict';
 
   const SECTION_TOP = 400;           // insertion point (between grid and 성과 정보)
-  const SECTION_HEIGHT_EXP = 380;    // expanded height
+  const SECTION_HEIGHT_EXP = 560;    // expanded height
   const SECTION_HEIGHT_COL = 44;     // collapsed (header only)
-  const IFRAME_HEIGHT_EXP = 340;
+  const IFRAME_HEIGHT_EXP = 520;
   const IFRAME_HEIGHT_COL = 44;
   const ORIGINAL_FORM_HEIGHT = 1645; // original nexainnercontainer height
 
@@ -357,6 +357,17 @@ td{padding:6px 8px;border-right:1px solid #e8e8e8;border-bottom:1px solid #f0f0f
 td:last-child{border-right:none}td:first-child{text-align:center}
 tr.dr{cursor:pointer}tr.dr:hover{background:#f0f4fa}tr.dr.sel{background:#e3ecf7}
 .ph{padding:16px;text-align:center;color:#999}
+.al{margin-top:10px;flex-shrink:0}
+.al-title{font-size:13px;font-weight:bold;color:#444;margin-bottom:6px}
+.at{border:1px solid #d5d5d5;background:#fff;max-height:140px;overflow-y:auto;border-radius:2px}
+.at table{width:100%;border-collapse:collapse;font-size:13px}
+.at thead tr{background:#f5f6f8;border-bottom:1px solid #d5d5d5}
+.at th{padding:5px 8px;text-align:left;color:#444;font-weight:normal;border-right:1px solid #e8e8e8}
+.at th:last-child{border-right:none}
+.at td{padding:4px 8px;border-right:1px solid #e8e8e8;border-bottom:1px solid #f0f0f0;text-align:left}
+.at td:last-child{border-right:none}
+.at td:first-child{text-align:center}
+.at td input[type=checkbox]{cursor:pointer}
 .ac{display:flex;justify-content:flex-end;margin-top:10px;gap:8px;flex-shrink:0}
 .ba{background:rgb(24,55,98);border:none;border-radius:2px;font:15px NotoSans,'Malgun Gothic',sans-serif;color:#fff;height:32px;padding:0 20px;cursor:pointer}
 .ba:disabled{opacity:.5;cursor:not-allowed}.ba:not(:disabled):hover{background:rgb(34,65,108)}
@@ -365,13 +376,14 @@ tr.dr{cursor:pointer}tr.dr:hover{background:#f0f4fa}tr.dr.sel{background:#e3ecf7
 <div class="bp" id="bp">
 <div class="ir"><label>ORCID iD</label><input type="text" id="oi" placeholder="0000-0000-0000-0000"/><button class="bs" id="sb">검색<span class="tt">마지막으로 검색된 ORCID는 웹 브라우저에 저장됩니다.</span></button><span class="st" id="st"></span></div>
 <div class="rc" id="rc"><table><thead><tr><th>선택</th><th data-key="title">논문명</th><th data-key="journal">학술지</th><th data-key="year">연도</th><th data-key="doi">DOI</th></tr></thead><tbody id="tb"><tr><td colspan="5" class="ph">ORCID iD를 입력하고 검색하세요.</td></tr></tbody></table></div>
+<div class="al" id="al"><div class="al-title">저자 정보</div><div class="at" id="at"><table><thead><tr><th style="width:40px">순번</th><th>저자명</th><th style="width:60px;text-align:center">주저자</th><th style="width:60px;text-align:center">교신저자</th></tr></thead><tbody id="atb"><tr><td colspan="4" class="ph">논문을 선택하면 저자 목록이 표시됩니다.</td></tr></tbody></table></div></div>
 <div class="ac"><button class="ba" id="ab" disabled>자동입력</button></div>
 </div>
 <script>
 (function(){
 var oi=document.getElementById('oi'),sb=document.getElementById('sb'),st=document.getElementById('st'),
 tb=document.getElementById('tb'),ab=document.getElementById('ab'),cb=document.getElementById('colBtn'),
-bp=document.getElementById('bp'),sel=null,works=[];
+bp=document.getElementById('bp'),atb=document.getElementById('atb'),sel=null,works=[],authorList=[];
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 // Collapse
 var collapsed=false;
@@ -414,6 +426,32 @@ function render(){
   var idx=parseInt(r.dataset.i);sel=works[idx];r.querySelector('input').checked=true;
   tb.querySelectorAll('.dr').forEach(function(x){x.classList.remove('sel')});r.classList.add('sel');
   ab.disabled=false;
+  // Fetch authors from Crossref
+  authorList=[];
+  atb.innerHTML='<tr><td colspan="4" class="ph">저자 정보 로딩 중...</td></tr>';
+  if(sel.doi){
+   fetch('https://api.crossref.org/works/'+encodeURIComponent(sel.doi))
+   .then(function(r){return r.ok?r.json():null})
+   .then(function(d){
+    if(!d||!d.message||!d.message.author){atb.innerHTML='<tr><td colspan="4" class="ph">저자 정보를 찾을 수 없습니다.</td></tr>';return}
+    authorList=d.message.author.map(function(a,i){
+     var nm=(a.family||'')+(a.given?' '+a.given:'');
+     return{name:nm.trim(),isFirst:a.sequence==='first',isCorre:false};
+    });
+    renderAuthors();
+   }).catch(function(){atb.innerHTML='<tr><td colspan="4" class="ph">저자 정보 로딩 실패</td></tr>'});
+  }else{atb.innerHTML='<tr><td colspan="4" class="ph">DOI가 없어 저자 정보를 가져올 수 없습니다.</td></tr>'}
+ }});
+}
+function renderAuthors(){
+ if(!authorList.length){atb.innerHTML='<tr><td colspan="4" class="ph">저자 정보가 없습니다.</td></tr>';return}
+ atb.innerHTML=authorList.map(function(a,i){
+  return '<tr><td style="text-align:center">'+(i+1)+'</td><td>'+esc(a.name)+'</td><td style="text-align:center"><input type="checkbox" data-role="first" data-idx="'+i+'"'+(a.isFirst?' checked':'')+'></td><td style="text-align:center"><input type="checkbox" data-role="corre" data-idx="'+i+'"'+(a.isCorre?' checked':'')+'></td></tr>';
+ }).join('');
+ atb.querySelectorAll('input[type=checkbox]').forEach(function(cb){cb.onchange=function(){
+  var idx=parseInt(cb.dataset.idx),role=cb.dataset.role;
+  if(role==='first')authorList[idx].isFirst=cb.checked;
+  if(role==='corre')authorList[idx].isCorre=cb.checked;
  }});
 }
 // Sorting
@@ -428,7 +466,7 @@ document.querySelectorAll('th[data-key]').forEach(function(th){th.onclick=functi
 }});
 // Autofill
 ab.onclick=function(){if(!sel)return;ab.textContent='처리 중...';ab.disabled=true;
- window.parent.postMessage({type:'tm-autofill',doi:sel.doi,title:sel.title},'*')};
+ window.parent.postMessage({type:'tm-autofill',doi:sel.doi,title:sel.title,authors:authorList},'*')};
 window.addEventListener('message',function(e){
  if(e.data.type==='tm-done'){ab.textContent='자동입력 완료 ✓';ab.style.background='#2e7d32';setTimeout(function(){ab.textContent='자동입력';ab.style.background='';ab.disabled=false},3000)}
  else if(e.data.type==='tm-err'){ab.textContent='자동입력';ab.disabled=false;st.textContent='실패: '+(e.data.error||'');st.style.color='#d32f2f'}
@@ -438,7 +476,7 @@ window.addEventListener('message',function(e){
   }
 
   /* ─── Auto-fill logic (runs in parent context) ─── */
-  async function doAutoFill(doi, fallbackTitle) {
+  async function doAutoFill(doi, fallbackTitle, iframeAuthors) {
     const app = nexacro.getApplication();
     const form = app.mainframe.baseFrame.modalPopup.form;
     const ds = form.objects.dsFrutObjtList;
@@ -514,7 +552,6 @@ window.addEventListener('message',function(e){
     setF('jourPrssDe', jourPrssDe || '', 'divFrutObjInfo.calJourPrssDe');
 
     setF('dataSrceSe', 'AM2001'); resolveCtrl('divFrutObjInfo.rdoDataSrceSe')?.set_value('AM2001');
-    setF('jourSe', 'MC1010'); resolveCtrl('divFrutObjInfo.cboJourSe')?.set_value('MC1010');
 
     // ── 발행국가 ──
     // 1. Check manual overrides (ISSN → IRIS code) from GitHub
@@ -605,27 +642,26 @@ window.addEventListener('message',function(e){
 
     setF('thesAbstCn', abs || '', 'divFrutObjInfo.txtThesAbstCn');
 
-    // ── Authors ──
-    const authors = cr.author || [];
-    const first = [], co = [];
-    authors.forEach(a => {
-      const nm = (a.family || '') + (a.given ? ' ' + a.given : '');
-      (a.sequence === 'first' ? first : co).push(nm.trim());
-    });
+    // ── Authors (from iframe author table with user-selected roles) ──
+    const ia = iframeAuthors || [];
+    const firstAuthors = ia.filter(a => a.isFirst).map(a => a.name);
+    const correAuthors = ia.filter(a => a.isCorre).map(a => a.name);
+    const coAuthors = ia.filter(a => !a.isFirst).map(a => a.name);
 
     const pf = form.tabFrutObjt?.TabpageDetail?.form?.divPernOrgn?.form;
     if (pf) {
-      setF('mauthrNm', first.join(', ')); setF('mauthrCnt', String(first.length)); pf.edtMauthrNm?.set_value(first.join(', ')); pf.edtMauthrCnt?.set_value(String(first.length));
-      setF('jontAuthrNmLst', co.join(', ')); setF('jontAuthrCnt', String(co.length)); pf.edtJontAuthrNmLst?.set_value(co.join(', ')); pf.edtJontAuthrCnt?.set_value(String(co.length));
+      setF('mauthrNm', firstAuthors.join(';')); setF('mauthrCnt', String(firstAuthors.length)); pf.edtMauthrNm?.set_value(firstAuthors.join(';')); pf.edtMauthrCnt?.set_value(String(firstAuthors.length));
+      setF('jontAuthrNmLst', coAuthors.join(';')); setF('jontAuthrCnt', String(coAuthors.length)); pf.edtJontAuthrNmLst?.set_value(coAuthors.join(';')); pf.edtJontAuthrCnt?.set_value(String(coAuthors.length));
+      setF('cmctAuthrNmLst', correAuthors.join(';')); setF('cmctAuthrCnt', String(correAuthors.length)); pf.edtCmctAuthrNmLst?.set_value(correAuthors.join(';')); pf.edtCmctAuthrCnt?.set_value(String(correAuthors.length));
       const pub = cr.publisher || '';
       setF('issuaNm', pub); pf.edtIssuaNm?.set_value(pub);
-      setF('sumCnt', String(authors.length)); pf.edtSumCnt?.set_value(String(authors.length));
+      setF('sumCnt', String(ia.length)); pf.edtSumCnt?.set_value(String(ia.length));
     }
 
     // ── 기타정보 ──
     const ef = form.tabFrutObjt?.TabpageEtc?.form?.divSumn?.form;
     const countries = new Set();
-    authors.forEach(a => (a.affiliation || []).forEach(af => {
+    (cr.author || []).forEach(a => (a.affiliation || []).forEach(af => {
       const n = (af.name || '').toLowerCase();
       if (n.includes('korea') || n.includes('한국')) countries.add('KR');
       else if (n) countries.add('X');
@@ -633,8 +669,7 @@ window.addEventListener('message',function(e){
     const intl = countries.size > 1 ? 'Y' : 'N';
     setF('intnJontRschThesYn', intl); ef?.rdoIntnJontRschThesYn?.set_value(intl);
 
-    const kw = (cr.subject || []).join(', ');
-    setF('thesKwdCn', kw); ef?.txtThesKwdCn?.set_value(kw);
+    setF('thesKwdCn', abs || ''); ef?.txtThesKwdCn?.set_value(abs || '');
 
   }
 
@@ -744,16 +779,16 @@ window.addEventListener('message',function(e){
     }
 
     // Forward wheel events from iframe to parent scroll,
-    // but let the .rc table scroll internally first
+    // but let scrollable containers (.rc, .at) scroll internally first
     iDoc.addEventListener('wheel', function (e) {
-      const rc = iDoc.getElementById('rc');
-      if (rc) {
-        const atTop = rc.scrollTop <= 0;
-        const atBottom = rc.scrollTop + rc.clientHeight >= rc.scrollHeight - 1;
-        // If cursor is over the table and it can still scroll in that direction, let it
-        if (rc.contains(e.target)) {
+      var scrollables = ['rc', 'at'];
+      for (var si = 0; si < scrollables.length; si++) {
+        var el = iDoc.getElementById(scrollables[si]);
+        if (el && el.contains(e.target)) {
+          var atTop = el.scrollTop <= 0;
+          var atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
           if (!(e.deltaY < 0 && atTop) && !(e.deltaY > 0 && atBottom)) {
-            return; // let .rc scroll naturally
+            return; // let inner container scroll naturally
           }
         }
       }
@@ -806,7 +841,7 @@ window.addEventListener('message',function(e){
         sectionHeight = newH;
       }
       if (e.data.type === 'tm-autofill') {
-        doAutoFill(e.data.doi, e.data.title)
+        doAutoFill(e.data.doi, e.data.title, e.data.authors)
           .then(() => ifr.contentWindow.postMessage({ type: 'tm-done' }, '*'))
           .catch(err => ifr.contentWindow.postMessage({ type: 'tm-err', error: err.message }, '*'));
       }
