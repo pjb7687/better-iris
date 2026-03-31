@@ -55,38 +55,79 @@
     const ds = getDataset();
     if (!ds) { alert('데이터를 찾을 수 없습니다.'); return; }
 
-    const sbjtId    = ds.getColumn(rowIndex, 'sbjtId');
+    const sbjtId = ds.getColumn(rowIndex, 'sbjtId');
     const rndSbjtNo = ds.getColumn(rowIndex, 'rndSbjtNo');
     if (!sbjtId) { alert('과제 ID를 찾을 수 없습니다.'); return; }
 
-    const argDetailObj = {
-      sbjtId, rndSbjtNo,
-      prgDuclCd: 'D0016', ptcDuclCd: 'D0261', dtlDuclCd: 'D0262',
-      sbjtChngSe: 'AI3002', aendAgrtChngYn: 'N',
-      sorgnAgrtChngYn: 'N', blngGovdSe: 'AR4001',
-    };
+    // Save nav data before leaving 마이R&D
+    window.__tmAgrtNavData = { sbjtId, rndSbjtNo };
 
     const app = nexacro.getApplication();
     const baseForm = app.mainframe.baseFrame.form;
 
     // Step 1: Navigate to (승인통보)협약변경신청 list page
-    //         This properly tears down the 마이R&D layout (sidebar, header, etc.)
     baseForm.fnMenuOpenPrgm('P01535');
 
-    // Step 2: Once the list page form has loaded, navigate to the detail page
+    // Step 2: Wait for list page to load, search for the project, then navigate to detail
     const waitForListPage = () => {
       try {
         const curForm = app.mainframe.baseFrame.form.divWork.form
                           .divCenter.form.divWork.form;
-        if (curForm.name === 'AGRTCHNG0200_000' &&
-            typeof curForm.gfnChangeScreen === 'function') {
-          curForm.gfnChangeScreen('P01544', {}, argDetailObj);
+        if (curForm.name !== 'AGRTCHNG0200_000' ||
+            typeof curForm.fnSearch !== 'function') {
+          setTimeout(waitForListPage, 300);
           return;
         }
-      } catch (_) {}
-      setTimeout(waitForListPage, 300);
+
+        const data = window.__tmAgrtNavData;
+
+        // Set search field to find the project by rndSbjtNo
+        if (curForm.divSearch && curForm.divSearch.form) {
+          const searchForm = curForm.divSearch.form;
+          if (searchForm.edtRndSbjtNo) searchForm.edtRndSbjtNo.set_value(data.rndSbjtNo);
+        }
+        // Also set in dsSearch directly
+        if (curForm.dsSearch) {
+          curForm.dsSearch.setColumn(0, 'rndSbjtNo', data.rndSbjtNo);
+        }
+
+        // Search and then navigate to detail
+        const origCallback = curForm.fnCallback;
+        curForm.fnCallback = function (svcId, errorCode, errorMsg) {
+          // Restore original callback
+          curForm.fnCallback = origCallback;
+          if (origCallback) origCallback.call(curForm, svcId, errorCode, errorMsg);
+
+          // After search completes, find project and navigate
+          setTimeout(() => {
+            const listDs = curForm.dsAgrtChngObjtList;
+            if (!listDs || listDs.rowcount < 1) {
+              alert('협약변경 대상 목록에서 과제를 찾을 수 없습니다.');
+              return;
+            }
+
+            let targetRow = -1;
+            for (let r = 0; r < listDs.rowcount; r++) {
+              if (listDs.getColumn(r, 'sbjtId') === data.sbjtId) { targetRow = r; break; }
+            }
+            if (targetRow < 0) targetRow = 0; // fallback to first result
+
+            listDs.set_rowposition(targetRow);
+
+            // Build argDetailObj from fvArgDetailObj (correct sbjtChngSe, ptcDuclCd, etc.)
+            const argDetailObj = Object.assign({}, curForm.fvArgDetailObj);
+            argDetailObj.sbjtId = data.sbjtId;
+            argDetailObj.blngGovdSe = listDs.getColumn(targetRow, 'blngGovdSe');
+            curForm.fnDetailScreen(argDetailObj);
+          }, 500);
+        };
+
+        curForm.fnSearch();
+      } catch (_) {
+        setTimeout(waitForListPage, 300);
+      }
     };
-    setTimeout(waitForListPage, 1000);
+    setTimeout(waitForListPage, 1500);
   }
 
   // ─── 성과등록 direct navigation ───────────────────────────
