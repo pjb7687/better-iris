@@ -926,7 +926,7 @@ window.addEventListener('message',function(e){
       // Check if it's the 논문 modal (FRUTTHES0001_P01)
       const form = modal.querySelector('[id*="FRUTTHES0001"]');
       const btnCnlk = modal.querySelector('[id*="btnCnlkSrch"]');
-      if (btnCnlk && !modal.querySelector('.tm-orcid-section')) {
+      if (form && btnCnlk && !modal.querySelector('.tm-orcid-section')) {
         setTimeout(inject, 500); // wait for Nexacro to finish rendering
       }
     } else if (modalWasOpen) {
