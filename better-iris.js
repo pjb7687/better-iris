@@ -925,8 +925,12 @@ window.addEventListener('message',function(e){
       modalWasOpen = true;
       // Check if it's the 논문 modal (FRUTTHES0001_P01)
       const form = modal.querySelector('[id*="FRUTTHES0001"]');
+      let isThesisModal = false;
+      try {
+        isThesisModal = nexacro.getApplication().mainframe.baseFrame.modalPopup.form.name === 'FRUTTHES0001_P01';
+      } catch (_) {}
       const btnCnlk = modal.querySelector('[id*="btnCnlkSrch"]');
-      if (form && btnCnlk && !modal.querySelector('.tm-orcid-section')) {
+      if (isThesisModal && btnCnlk && !modal.querySelector('.tm-orcid-section')) {
         setTimeout(inject, 500); // wait for Nexacro to finish rendering
       }
     } else if (modalWasOpen) {
